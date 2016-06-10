@@ -15,6 +15,6 @@ ceilometer:
     verbose: True
 
 keystone:
-    ldap_domain:
-      enabled: True
-      domain: users
+  ldap_domain:
+    enabled: True
+    domain: users

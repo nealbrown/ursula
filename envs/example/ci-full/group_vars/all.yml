@@ -7,6 +7,6 @@ neutron:
   enable_external_interface: True
 
 keystone:
-    ldap_domain:
-      enabled: True
-      domain: users
+  ldap_domain:
+    enabled: True
+    domain: users
