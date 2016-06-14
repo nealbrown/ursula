@@ -28,31 +28,30 @@
       project_name: admin
       username: admin
       password: "{{ secrets.admin_password }}"
+  register: ldap_project
   run_once: true
 
-- debug: var=ldap_domain
-
-- name: retrieve user id of deploy_user
+- name: determine id of the ldap domain deploy user
   environment:
     OS_IDENTITY_API_VERSION: 3
     OS_DOMAIN_ID: default
-  os_user_facts:
-    auth:
-      auth_url: "{{ endpoints.keystone.url.internal }}/v3"
-      project_name: admin
-      username: admin
-      password: "{{ secrets.admin_password }}"
-    name: "{{ keystone.ldap_domain.deploy_user }}"
-    domain: "{{ ldap_domain.id }}"
+  shell: . /root/stackrc; openstack --os-auth-url "{{ endpoints.keystone.url.internal }}/v3" user show --domain "{{ ldap_domain.id }}" "{{ keystone.ldap_domain.deploy_user }}"
+  when: keystone.ldap_domain.enabled|default('False')|bool and keystone.ldap_domain.deploy_user != ""
+  register: ldap_deploy_user
   run_once: true
-  register: deploy_user
 
-- debug: var=deploy_user
-
-- name: add admin role to the ldap domain deploy user
+- name: add domain admin role to the ldap domain deploy user
   environment:
     OS_IDENTITY_API_VERSION: 3
     OS_DOMAIN_ID: default
-  shell: . /root/stackrc; openstack --os-auth-url "{{ endpoints.keystone.url.internal }}/v3" role add --domain "{{ ldap_domain.id }}" --user "{{ deploy_user.id }}" admin
+  shell: . /root/stackrc; openstack --os-auth-url "{{ endpoints.keystone.url.internal }}/v3" role add --domain "{{ ldap_domain.id }}" --user "{{ ldap_deploy_user.stdout.split('| id        | ')[1].split(' |')[0] }}" admin
+  when: keystone.ldap_domain.enabled|default('False')|bool and keystone.ldap_domain.deploy_user != ""
+  run_once: true
+
+- name: add project admin role to the ldap domain deploy user
+  environment:
+    OS_IDENTITY_API_VERSION: 3
+    OS_DOMAIN_ID: default
+  shell: . /root/stackrc; openstack --os-auth-url "{{ endpoints.keystone.url.internal }}/v3" role add --project "{{ ldap_project.project.id }}" --user "{{ ldap_deploy_user.stdout.split('| id        | ')[1].split(' |')[0] }}" admin
   when: keystone.ldap_domain.enabled|default('False')|bool and keystone.ldap_domain.deploy_user != ""
   run_once: true
