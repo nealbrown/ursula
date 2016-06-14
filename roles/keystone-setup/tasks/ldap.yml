@@ -43,7 +43,7 @@
       username: admin
       password: "{{ secrets.admin_password }}"
     name: "{{ keystone.ldap_domain.deploy_user }}"
-    domain: "{{ ldap_domain.domain.id }}"
+    domain: "{{ ldap_domain.id }}"
   run_once: true
   register: deploy_user
 
