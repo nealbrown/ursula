@@ -13,6 +13,9 @@
   run_once: true
   register: ldap_domain
 
+- name: restart keystone to pick up ldap domain users
+  service: name=keystone state=restarted
+
 - name: create ldap project
   environment:
     OS_IDENTITY_API_VERSION: 3
@@ -25,4 +28,31 @@
       project_name: admin
       username: admin
       password: "{{ secrets.admin_password }}"
+  run_once: true
+
+- debug: var=ldap_domain
+
+- name: retrieve user id of deploy_user
+  environment:
+    OS_IDENTITY_API_VERSION: 3
+    OS_DOMAIN_ID: default
+  os_user_facts:
+    auth:
+      auth_url: "{{ endpoints.keystone.url.internal }}/v3"
+      project_name: admin
+      username: admin
+      password: "{{ secrets.admin_password }}"
+    name: "{{ keystone.ldap_domain.deploy_user }}"
+    domain: "{{ ldap_domain.domain.id }}"
+  run_once: true
+  register: deploy_user
+
+- debug: var=deploy_user
+
+- name: add admin role to the ldap domain deploy user
+  environment:
+    OS_IDENTITY_API_VERSION: 3
+    OS_DOMAIN_ID: default
+  shell: . /root/stackrc; openstack --os-auth-url "{{ endpoints.keystone.url.internal }}/v3" role add --domain "{{ ldap_domain.id }}" --user "{{ deploy_user.id }}" admin
+  when: keystone.ldap_domain.enabled|default('False')|bool and keystone.ldap_domain.deploy_user != ""
   run_once: true
